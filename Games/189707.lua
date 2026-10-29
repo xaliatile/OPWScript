@@ -17,7 +17,7 @@ if typeof(ExecutorID) ~= "function" then
 
     ExecutorID = "EX_UID"
 else
-    ExecutorID = ExecutorIDCallback()
+    ExecutorID = ExecutorID()
 end
 
 --// Services \\--
@@ -44,7 +44,7 @@ local Character = CloneReference(Player.Character or Player.CharacterAdded:Wait(
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 local Humanoid = Character:WaitForChild("Humanoid")
 
-if Humanoid then Humanoid = CloneReference(Humanoid) end if HumanoidRootPart then HumanoidRootPart = CloneReference(HumanoidRootPart) end
+if Humanoid then Humanoid = CloneReference(Humanoid) end; if HumanoidRootPart then HumanoidRootPart = CloneReference(HumanoidRootPart) end
 
 const StateReplicators = ReplicatedStorage:WaitForChild("State Replicators")
 const CompassVotes = StateReplicators:WaitForChild("Compass")
@@ -160,24 +160,6 @@ const function ProtectCallback(Callback, ThreadTag : string, PackArguments : boo
     return Success, Result
 end
 
-const function CheckInputEquality(NewInput : Enum.KeyCode | Enum.UserInputType, Input : Enum.KeyCode | Enum.UserInputType)
-    local Success, Result = ProtectCallback(function()
-        local InputEnumType = tostring(Input.EnumType)
-
-        if NewInput[InputEnumType] == Input then
-            return true
-        else
-            return false
-        end
-    end, "__checkInputEquality")
-
-    if not Success then
-        Result = Success
-    end
-    
-    return Result
-end
-
 const function Decimate(Number : number, PlaceValues : number)
     if typeof(Number) ~= "number" or typeof(PlaceValues) ~= "number" then
         return
@@ -268,7 +250,7 @@ const function HandlePropertiesOfDescendants(Type : "Set" | "Reset"?, Ancestor :
 
                 for _, Descendant in Ancestor:GetDescendants() do
                     if Descendant:IsA("Model") then
-                        SetPropertiesOfDescendants("Set", Descendant, Properties)
+                        HandlePropertiesOfDescendants("Set", Descendant, Properties)
                     elseif Descendant:IsA("BasePart") then
                         for Property, Value in Properties do
                             if typeof(Descendant[Property]) ~= "nil" then
@@ -299,7 +281,7 @@ const function HandlePropertiesOfDescendants(Type : "Set" | "Reset"?, Ancestor :
 
                 for _, Descendant in Ancestor:GetDescendants() do
                     if Descendant:IsA("Model") then
-                        SetPropertiesOfDescendants("Reset", Descendant, Properties)
+                        HandlePropertiesOfDescendants("Reset", Descendant, Properties)
                     elseif Descendant:IsA("BasePart") then
                         local Attributes = Descendant:GetAttributes()
 
@@ -341,7 +323,7 @@ const function OnRemoveNoBarbedWireToggled(Value : boolean)
                 local AncestorChildren = (Ancestor and Ancestor:GetDescendants() or {})
 
                 for _, Entry in AncestorChildren do
-                    if Entry:IsA("Model") then
+                    if #Entry:GetChildren() >= 1 then
                         EvalulateDescendants(Entry)
                     elseif Entry:IsA("BasePart") then
                         if Entry.Name == "BarbedWire" then
@@ -351,7 +333,7 @@ const function OnRemoveNoBarbedWireToggled(Value : boolean)
                 end
             end
 
-            EvalulateDescendants(PotentialMap)
+            EvalulateDescendants(StructureFolder)
         end
     end, "__onRemoveNoBarbedWireToggled")
 end
@@ -509,7 +491,7 @@ const function CreateScriptDependencies()
         )
     end
 
-    ProtectCallback(function()``
+    ProtectCallback(function()
         if Script.ScriptData.Debug then
             Output(
                 print,
@@ -746,16 +728,6 @@ const function CreateScriptDependencies()
     end, "__createScriptDependencies")
 end
 
--- Handles all main input events
-const function UserInputBegan(Input, GPE)
-    if GPE then return end
-end
-
--- Handles all main input events
-const function UserInputEnded(Input, GPE)
-    if GPE then return end
-end
-
 -- Handles character pointer evaulation
 const function OnUserCharacterAdded(NewCharacter : Model)
     Character = CloneReference(NewCharacter)
@@ -840,16 +812,6 @@ end
 -- Handles all events including starting themDW
 const function StartScriptEvents()
     ProtectCallback(function()
-        table.insert(
-            Script.ScriptData.ScriptPool, 
-            UserInputService.InputBegan:Connect(UserInputBegan)
-        )
-
-        table.insert(
-            Script.ScriptData.ScriptPool, 
-            UserInputService.InputEnded:Connect(UserInputEnded)
-        )
-
         table.insert(
             Script.ScriptData.ScriptPool, 
             Player.CharacterAdded:Connect(OnUserCharacterAdded)
