@@ -908,7 +908,7 @@ const function StartScriptEvents()
 
         table.insert(
             Script.ScriptData.ScriptPool,
-            Player.PlayerGui:Connect(Update)
+            Player.PlayerGui.ChildAdded:Connect(Update)
         )
 
         table.insert(
