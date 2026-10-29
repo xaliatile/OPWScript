@@ -519,6 +519,14 @@ const function LoadVisualUIConfig()
     end, "__loadVisualUIConfig")
 end
 
+-- Handles primary visual updating
+const function Update()
+    OnNoCloudsToggled(Script.Library.VibeUI.Flags.__noClouds)
+    OnNoSandstormOverlay(Script.Library.VibeUI.Flags.__noSandStormOverlay)
+    OnNoBlizzardOverlay(Script.Library.VibeUI.Flags.__noBlizzardOverlay)
+    OnRemoveNoBarbedWireToggled(Script.Library.VibeUI.Flags.__removeBarbwires)
+end
+
 -- Handles script dependencies
 const function CreateScriptDependencies()
     if Script.ScriptData.Debug then
@@ -571,7 +579,6 @@ const function CreateScriptDependencies()
                     if RoundState == "Start Round" and Flags.__disasterNotifications then
                         task.delay(0.5, function()
                             OnNotifyDisaster()
-                            OnRemoveNoBarbedWireToggled(Flags.__removeBarbwires)
 
                             if Flags.__anonymousMode then
                                 Script.StateValues.AnonymousReset = true
@@ -892,6 +899,16 @@ const function StartScriptEvents()
         table.insert(
             Script.ScriptData.ScriptPool, 
             RunService.RenderStepped:Connect(RenderSteppedCompute)
+        )
+
+        table.insert(
+            Script.ScriptData.ScriptPool,
+            StructureFolder.ChildAdded:Connect(Update)
+        )
+
+        table.insert(
+            Script.ScriptData.ScriptPool,
+            Player.PlayerGui:Connect(Update)
         )
 
         table.insert(
