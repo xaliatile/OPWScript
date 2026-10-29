@@ -60,7 +60,7 @@ local Script = {
         Version = "1.0.0",
         ScriptGUID = HttpService:GenerateGUID(true),
         ScriptEnvironment = "__opScript",
-        ScriptWatermark = "NDS Script | 10/26/26",
+        ScriptWatermarkText = "NDS Script | 10/26/26",
         ScriptPool = {},
 
         Executor = ExecutorID,
@@ -130,7 +130,7 @@ local Script = {
 
 --// Script Utilities \\--
 const function Output(Callback : any, ThreadTag : string, Message : string)
-    local Success, Result = pcall(Callback, `[{Script.ScriptData.ScriptEnvironment} :: {ThreadTag}]: {Message}`)
+    const Success, Result = pcall(Callback, `[{Script.ScriptData.ScriptEnvironment} :: {ThreadTag}]: {Message}`)
     if not Success then
         Output(
             warn,
@@ -141,8 +141,8 @@ const function Output(Callback : any, ThreadTag : string, Message : string)
 end
 
 const function ProtectCallback(Callback, ThreadTag : string, PackArguments : boolean?, ... : any?)
-    local Arguments = {...}
-    local Success, Result = pcall(Callback, (PackArguments and Arguments or table.unpack(Arguments)))
+    const Arguments = {...}
+    const Success, Result = pcall(Callback, (PackArguments and Arguments or table.unpack(Arguments)))
 
     if not Success then
         Output(
@@ -267,10 +267,10 @@ const function HandlePropertiesOfDescendants(Type : "Set" | "Reset"?, Ancestor :
                     end
                 end
             elseif Type == "Reset" then
-                local AncestorAttributes = Ancestor:GetAttributes()
+                const AncestorAttributes = Ancestor:GetAttributes()
 
                 for Attribute, Value in AncestorAttributes do
-                    local Success = pcall(function()
+                    const Success = pcall(function()
                         Ancestor[Attribute] = Value
                     end)
 
@@ -283,10 +283,10 @@ const function HandlePropertiesOfDescendants(Type : "Set" | "Reset"?, Ancestor :
                     if Descendant:IsA("Model") then
                         HandlePropertiesOfDescendants("Reset", Descendant, Properties)
                     elseif Descendant:IsA("BasePart") then
-                        local Attributes = Descendant:GetAttributes()
+                        const Attributes = Descendant:GetAttributes()
 
                         for Attribute, Value in Attributes do
-                            local Success = pcall(function()
+                            const Success = pcall(function()
                                 Descendant[Attribute] = Value
                             end)
 
@@ -304,7 +304,7 @@ end
 --// UI Interaction Definitions \\--
 const function OnDirtCollisionToggled(Value : boolean?)
     ProtectCallback(function()
-        local IslandChildren = Island and Island:GetChildren() or {}
+        const IslandChildren = Island and Island:GetChildren() or {}
     
         for _, Part in IslandChildren do
             if Part:IsA("BasePart") then
@@ -320,7 +320,7 @@ const function OnRemoveNoBarbedWireToggled(Value : boolean)
     ProtectCallback(function()
         if Value then
             local function EvalulateDescendants(Ancestor : Instance)
-                local AncestorChildren = (Ancestor and Ancestor:GetDescendants() or {})
+                const AncestorChildren = (Ancestor and Ancestor:GetDescendants() or {})
 
                 for _, Entry in AncestorChildren do
                     if #Entry:GetChildren() >= 1 then
@@ -338,7 +338,45 @@ const function OnRemoveNoBarbedWireToggled(Value : boolean)
     end, "__onRemoveNoBarbedWireToggled")
 end
 
-const function OnAnonymousModeToggled(Value)
+const function OnNoCloudsToggled(Value : boolean)
+    ProtectCallback(function()
+        const CloudsPart = StructureFolder:FindFirstChild("Cloud")
+
+        if CloudsPart then
+            CloudsPart.Transparency = (Value and 1 or 0)
+        end
+    end, "__onNoCloudsToggled")
+end
+
+const function OnNoBlizzardOverlay(Value : boolean)
+    ProtectCallback(function()
+        const PlayerGui = Player.PlayerGui
+
+        if PlayerGui then
+            const BlizzardGui = PlayerGui:FindFirstChild("BlizzardGui")
+
+            if BlizzardGui then
+                BlizzardGui.Enabled = not Value
+            end
+        end
+    end, "__onNoBlizzardOverlay")
+end
+
+const function OnNoSandstormOverlay(Value : boolean)
+    ProtectCallback(function()
+        const PlayerGui = Player.PlayerGui
+
+        if PlayerGui then
+            const SandstormGui = PlayerGui:FindFirstChild("SandStormGui")
+
+            if SandstormGui then
+                SandstormGui.Enabled = not Value
+            end
+        end
+    end, "__onNoSandstormOverlay")
+end
+
+const function OnAnonymousModeToggled(Value : boolean)
     ProtectCallback(function()
         if Value and not Script.Library.Notified then
             Script.Library.Notified = true
@@ -357,7 +395,7 @@ end
 
 const function OnNotifyDisaster()
     ProtectCallback(function()
-        local SurvivalTag = Character:FindFirstChild("SurvivalTag")
+        const SurvivalTag = Character:FindFirstChild("SurvivalTag")
 
         if SurvivalTag then
             Script.StateValues.RecordedSurvivalTag = SurvivalTag
@@ -606,6 +644,12 @@ const function CreateScriptDependencies()
                 RichText = false
             })
 
+            Script.Library.KeybindList = Script.Library.VibeUI:KeybindList({
+                Title = "Keybinds", 
+                ShowTitle = true, 
+                RichText = false
+            })
+
             Script.Library.Tabs.Settings.Tab = Script.Library.VibeUI:CreateSettingsPage(
                 Script.Library.Window,
                 Script.ScriptData.ScriptWatermark,
@@ -632,18 +676,24 @@ const function CreateScriptDependencies()
                 Side = 1
             })
 
-            --// Game Section Defs
+            --// Notifications Section Defs
             Script.Library.Tabs.MainTab.TabContents.NotificationsSection = Script.Library.Tabs.MainTab.Tab:Section({
                 Name = "Notifications",
                 Side = 2
             })
 
-             --// Game Section Defs
+            --// Antis Section Defs
             Script.Library.Tabs.MainTab.TabContents.AntisSection = Script.Library.Tabs.MainTab.Tab:Section({
                 Name = "Antis",
                 Side = 1
             })
 
+            --// Antis Section Defs
+            Script.Library.Tabs.MainTab.TabContents.VisualsSection = Script.Library.Tabs.MainTab.Tab:Section({
+                Name = "Visuals",
+                Side = 2
+            })
+            
             --// Teleports Section Defs
             Script.Library.Tabs.Teleports.TabContents.TeleportsSection = Script.Library.Tabs.Teleports.Tab:Section({
                 Name = "Teleports",
@@ -656,13 +706,13 @@ const function CreateScriptDependencies()
                 Side = 1
             })
 
-             --// Main Script Section Defs
+            --// Main Script Section Defs
             Script.Library.Tabs.Settings.TabContents.MainScriptSection = Script.Library.Tabs.Settings.Tab:Section({
                 Name = "Script",
                 Side = 2
             })
 
-            --// Toggles
+            --// Main Section Toggles
             Script.Library.Tabs.MainTab.TabContents.WaterCollisionToggle = Script.Library.Tabs.MainTab.TabContents.PlayerSection:Toggle({
                 Name = "Water Collision",
                 Flag = "__waterCollision",
@@ -701,18 +751,38 @@ const function CreateScriptDependencies()
                 Callback = OnAnonymousModeToggled
             })
 
-            --// Buttons
+            Script.Library.Tabs.MainTab.TabContents.VisualsSection:Toggle({
+                Name = "No Clouds",
+                Flag = "__noClouds",
+                Callback = OnNoCloudsToggled
+            })
+
+            Script.Library.Tabs.MainTab.TabContents.VisualsSection:Toggle({
+                Name = "No Sandstorm Overlay",
+                Flag = "__noSandStormOverlay",
+                Callback = OnNoSandstormOverlay
+            })
+
+            Script.Library.Tabs.MainTab.TabContents.VisualsSection:Toggle({
+                Name = "No Blizzard Overlay",
+                Flag = "__noBlizzardOverlay",
+                Callback = OnNoBlizzardOverlay
+            })
+
+            --// Teleport Section Buttons
             Script.Library.Tabs.MainTab.TabContents.TeleportButtons = Script.Library.Tabs.Teleports.TabContents.TeleportsSection:Button()
             Script.Library.Tabs.MainTab.TabContents.TeleportButtons:Add("Teleport To Island", OnTeleportToIsland)
             Script.Library.Tabs.MainTab.TabContents.TeleportButtons:Add("Teleport To Tower", OnTeleportToTower)
 
+            --// Notification Section Buttons
             Script.Library.Tabs.MainTab.TabContents.NotificationButtons = Script.Library.Tabs.MainTab.TabContents.NotificationsSection:Button()
             Script.Library.Tabs.MainTab.TabContents.NotificationButtons:Add("Notify Current Disaster", OnNotifyDisaster)
 
+            --// Script Section Buttons
             Script.Library.Tabs.Scripts.TabContents.ScriptButtons = Script.Library.Tabs.Scripts.TabContents.ScriptsSection:Button()
             Script.Library.Tabs.Scripts.TabContents.ScriptButtons:Add("Infinite Yield", OnLoadIY)
 
-            --// Paragraphs
+            --// Setting Paragraphs
             Script.Library.Tabs.Settings.TabContents.StartupInfoParagraph = Script.Library.Tabs.Settings.TabContents.MainScriptSection:Paragraph({
                 Name = "Startup Info",
                 Content = ""
