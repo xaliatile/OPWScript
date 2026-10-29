@@ -21,19 +21,12 @@ else
 end
 
 --// Services \\--
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService") 
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
-
-ReplicatedStorage = CloneReference(ReplicatedStorage)
-UserInputService = CloneReference(UserInputService)
-HttpService = CloneReference(HttpService)
-RunService = CloneReference(RunService)
-Players = CloneReference(Players)
-CoreGui = CloneReference(CoreGui)
+local ReplicatedStorage = CloneReference(game:GetService("ReplicatedStorage"))
+local UserInputService = CloneReference(game:GetService("UserInputService"))
+local HttpService = CloneReference(game:GetService("HttpService"))
+local RunService = CloneReference(game:GetService("RunService"))
+local Players = CloneReference(game:GetService("Players"))
+local CoreGui = CloneReference(game:GetService("CoreGui"))
 
 --// Variables \\--
 const Player = CloneReference(
@@ -524,7 +517,7 @@ const function Update()
     OnNoCloudsToggled(Script.Library.VibeUI.Flags.__noClouds)
     OnNoSandstormOverlay(Script.Library.VibeUI.Flags.__noSandStormOverlay)
     OnNoBlizzardOverlay(Script.Library.VibeUI.Flags.__noBlizzardOverlay)
-    OnRemoveNoBarbedWireToggled(Script.Library.VibeUI.Flags.__removeBarbwires)
+    --OnRemoveNoBarbedWireToggled(Script.Library.VibeUI.Flags.__removeBarbwires)
 end
 
 -- Handles script dependencies
@@ -579,7 +572,8 @@ const function CreateScriptDependencies()
                     if RoundState == "Start Round" and Flags.__disasterNotifications then
                         task.delay(0.5, function()
                             OnNotifyDisaster()
-
+                            OnRemoveNoBarbedWireToggled(Script.Library.VibeUI.Flags.__removeBarbwires)
+                            
                             if Flags.__anonymousMode then
                                 Script.StateValues.AnonymousReset = true
                             
