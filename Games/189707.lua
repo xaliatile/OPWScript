@@ -1,3 +1,25 @@
+-- // This script will never be obfuscated by me \\--
+const CloneReference = cloneref or clonereference
+local ExecutorID = typeof(identifyexecutor) == "function" and identifyexecutor
+
+if typeof(CloneReference) ~= "function" then
+    warn(
+        "Cannot load script, Executor doesnt support clonereference."
+    )
+
+    return
+end
+
+if typeof(ExecutorID) ~= "function" then
+    warn(
+        "Executor doesnt support identify executor, using fallback."
+    )
+
+    ExecutorID = "EX_UID"
+else
+    ExecutorID = ExecutorIDCallback()
+end
+
 --// Services \\--
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -6,19 +28,23 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 
-ReplicatedStorage = cloneref(ReplicatedStorage)
-UserInputService = cloneref(UserInputService)
-HttpService = cloneref(HttpService)
-RunService = cloneref(RunService)
-Players = cloneref(Players)
-CoreGui = cloneref(CoreGui)
+ReplicatedStorage = CloneReference(ReplicatedStorage)
+UserInputService = CloneReference(UserInputService)
+HttpService = CloneReference(HttpService)
+RunService = CloneReference(RunService)
+Players = CloneReference(Players)
+CoreGui = CloneReference(CoreGui)
 
 --// Variables \\--
-const Player = Players.LocalPlayer
+const Player = CloneReference(
+    Players.LocalPlayer
+)
 
-local Character = Player.Character or Player.CharacterAdded:Wait()
+local Character = CloneReference(Player.Character or Player.CharacterAdded:Wait())
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 local Humanoid = Character:WaitForChild("Humanoid")
+
+if Humanoid then Humanoid = CloneReference(Humanoid) end if HumanoidRootPart then HumanoidRootPart = CloneReference(HumanoidRootPart) end
 
 const StateReplicators = ReplicatedStorage:WaitForChild("State Replicators")
 const CompassVotes = StateReplicators:WaitForChild("Compass")
@@ -37,6 +63,7 @@ local Script = {
         ScriptWatermark = "NDS Script | 10/26/26",
         ScriptPool = {},
 
+        Executor = ExecutorID,
         Errors = {},
 
         IsUnloading = false,
@@ -101,7 +128,6 @@ local Script = {
 	}
 }
 
-
 --// Script Utilities \\--
 const function Output(Callback : any, ThreadTag : string, Message : string)
     local Success, Result = pcall(Callback, `[{Script.ScriptData.ScriptEnvironment} :: {ThreadTag}]: {Message}`)
@@ -161,64 +187,65 @@ const function Decimate(Number : number, PlaceValues : number)
 end
 
 const function UnloadScript()
-    Script.ScriptData.IsUnloading = true
+    pcall(function()
+        Script.ScriptData.IsUnloading = true
 
-    if Script.ScriptData.Debug then
-        local ElapsedTime = (os.clock() - Script.ScriptData.BootTime)
-
-        Output(
-            print,
-            "__unloadScript",
-            `Unloading script ran for {
-                Decimate(ElapsedTime, 1000)
-            } second(s).`
-        )
-    end
-    
-    if Script and Script.Library and Script.Library.VibeUI then
-        Script.Library.VibeUI:Unload()
-    end
-
-    for Idx, Entry in Script.ScriptData.ScriptPool do
-        if typeof(Entry) == "string" then
-            RunService:UnbindFromRenderStep(Entry)
-        elseif typeof(Entry) == "RBXScriptConnection" then
-            Entry:Disconnect()
-        elseif typeof(Entry) == "Instance" then
-            Entry:Destroy()
-        elseif typeof(Entry) == "thread" then
-            task.spawn(function()
-                while coroutine.status(Entry) ~= "suspended" do
-                    pcall(task.cancel, Entry)
-                end
-            end)
+        if Script.ScriptData.Debug then
+            local ElapsedTime = (os.clock() - Script.ScriptData.BootTime)
+            Output(
+                print,
+                "__unloadScript",
+                `Unloading script ran for {
+                    Decimate(ElapsedTime, 1000)
+                } second(s) and experienced {#Script.ScriptData.Errors} Errors.`
+            )
         end
-    end
+        
+        if Script and Script.Library and Script.Library.VibeUI then
+            Script.Library.VibeUI:Unload()
+        end
 
-    local function EvaluateEntry(Entry : {any?}?, CallingMultEval : boolean?)
-        if Entry then
-            for Idx, TableEntry in Entry do
-                if typeof(TableEntry) == "table" and not TableEntry.__DO_NOT_RECURSIVE then
-                    EvaluateEntry(TableEntry, true)
+        for Idx, Entry in Script.ScriptData.ScriptPool do
+            if typeof(Entry) == "string" then
+                RunService:UnbindFromRenderStep(Entry)
+            elseif typeof(Entry) == "RBXScriptConnection" then
+                Entry:Disconnect()
+            elseif typeof(Entry) == "Instance" then
+                Entry:Destroy()
+            elseif typeof(Entry) == "thread" then
+                task.spawn(function()
+                    while coroutine.status(Entry) ~= "suspended" do
+                        pcall(task.cancel, Entry)
+                    end
+                end)
+            end
+        end
+
+        local function EvaluateEntry(Entry : {any?}?, CallingMultEval : boolean?)
+            if Entry then
+                for Idx, TableEntry in Entry do
+                    if typeof(TableEntry) == "table" and not TableEntry.__DO_NOT_RECURSIVE then
+                        EvaluateEntry(TableEntry, true)
+                    end
+
+                    if CallingMultEval then
+                        Entry[Idx] = nil
+                    end
                 end
 
                 if CallingMultEval then
-                    Entry[Idx] = nil
+                    task.defer(table.clear, Entry)
+                    Entry = nil
                 end
             end
-
-            if CallingMultEval then
-                task.defer(table.clear, Entry)
-                Entry = nil
-            end
         end
-    end
 
-    EvaluateEntry(Script)
-    
-    task.defer(function()
-        table.clear(Script)
-        Script = nil
+        EvaluateEntry(Script)
+        
+        task.defer(function()
+            table.clear(Script)
+            Script = nil
+        end)
     end)
 end
 
@@ -292,172 +319,176 @@ const function HandlePropertiesOfDescendants(Type : "Set" | "Reset"?, Ancestor :
     end, "__setPropertiesOfDescendants")
 end
 
-const function GetAccurateTargetPosition(Distance : number)
-    local MousePosition = UserInputService:GetMouseLocation()
-    local UnitRay = Camera:ScreenPointToRay(MousePosition.X, MousePosition.Y)
-
-    local Position = (HumanoidRootPart and HumanoidRootPart.Position or UnitRay.Origin)
-    return Position + (UnitRay.Direction * Distance)
-end
-
-const function GetAccurateMouseDirection()
-    local MousePosition = UserInputService:GetMouseLocation()
-    local UnitRay = Camera:ScreenPointToRay(MousePosition.X, MousePosition.Y)
-    
-    return UnitRay.Direction
-end
-
 --// UI Interaction Definitions \\--
 const function OnDirtCollisionToggled(Value : boolean?)
-    local IslandChildren = Island and Island:GetChildren() or {}
-    local DirtColor = Color3.fromRGB(105, 64, 40)
-
-    for _, Part in IslandChildren do
-        if Part:IsA("BasePart") then
-            if Part.Name ~= "Grass" and Part.Color == DirtColor then
-                Part.CanCollide = (Value or false)
+    ProtectCallback(function()
+        local IslandChildren = Island and Island:GetChildren() or {}
+    
+        for _, Part in IslandChildren do
+            if Part:IsA("BasePart") then
+                if Part.Name ~= "Grass" then
+                    Part.CanCollide = (Value or false)
+                end
             end
         end
-    end
+    end, "__onDirtCollisionToggled")
 end
 
 const function OnRemoveNoBarbedWireToggled(Value : boolean)
-    if Value then
-        local function EvalulateDescendants(Ancestor : Instance)
-            local AncestorChildren = (Ancestor and Ancestor:GetDescendants() or {})
+    ProtectCallback(function()
+        if Value then
+            local function EvalulateDescendants(Ancestor : Instance)
+                local AncestorChildren = (Ancestor and Ancestor:GetDescendants() or {})
 
-            for _, Entry in AncestorChildren do
-                if Entry:IsA("Model") then
-                    EvalulateDescendants(Entry)
-                elseif Entry:IsA("BasePart") then
-                    if Entry.Name == "BarbedWire" then
-                        Entry:Destroy()
+                for _, Entry in AncestorChildren do
+                    if Entry:IsA("Model") then
+                        EvalulateDescendants(Entry)
+                    elseif Entry:IsA("BasePart") then
+                        if Entry.Name == "BarbedWire" then
+                            Entry:Destroy()
+                        end
                     end
                 end
             end
 
             EvalulateDescendants(PotentialMap)
         end
-    end
+    end, "__onRemoveNoBarbedWireToggled")
 end
 
 const function OnAnonymousModeToggled(Value)
-    if Value and not Script.Library.Notified then
-        Script.Library.Notified = true
+    ProtectCallback(function()
+        if Value and not Script.Library.Notified then
+            Script.Library.Notified = true
 
-        Script.Library.VibeUI:Notification({
-            Title = "Notice",
-            Description = "This does not make your username dissapear it resets you every round to prevent your name from showing up on the survivor list, It will prevent you from getting wins.",
-            Type = "warning",  -- info | success | warning | error
-            Duration = 12,
-        })
-    else
-        return
-    end
+            Script.Library.VibeUI:Notification({
+                Title = "Notice",
+                Description = "This doesnt make your username dissapear. Using this feature attempts to remove you from the survivals list to remain somewhat anonymous, in order to do so it needs to reset you.",
+                Type = "warning",  -- info | success | warning | error
+                Duration = 12,
+            })
+        else
+            return
+        end
+    end, "__onAnonymousModeToggled")
 end
 
 const function OnNotifyDisaster()
-    local SurvivalTag = Character:FindFirstChild("SurvivalTag")
+    ProtectCallback(function()
+        local SurvivalTag = Character:FindFirstChild("SurvivalTag")
 
-    if SurvivalTag then
-        Script.StateValues.RecordedSurvivalTag = SurvivalTag
-        
-        Script.Library.VibeUI:Notification({
-            Title = "Incoming Disaster",
-            Description = `Disaster is {SurvivalTag.Value}`,
-            Type = "warning",  -- info | success | warning | error
-            Duration = 20,
-        })
-    else
-        if Script.StateValues.RecordedSurvivalTag then
+        if SurvivalTag then
+            Script.StateValues.RecordedSurvivalTag = SurvivalTag
+            
             Script.Library.VibeUI:Notification({
                 Title = "Incoming Disaster",
-                Description = `Disaster is {Script.StateValues.RecordedSurvivalTag.Value}`,
+                Description = `Disaster is {SurvivalTag.Value}`,
                 Type = "warning",  -- info | success | warning | error
                 Duration = 20,
             })
         else
-            const AllPlayers = Players:GetPlayers()
+            if Script.StateValues.RecordedSurvivalTag then
+                Script.Library.VibeUI:Notification({
+                    Title = "Incoming Disaster",
+                    Description = `Disaster is {Script.StateValues.RecordedSurvivalTag.Value}`,
+                    Type = "warning",  -- info | success | warning | error
+                    Duration = 20,
+                })
+            else
+                const AllPlayers = Players:GetPlayers()
 
-            for Idx, OtherPlayer in AllPlayers do
-                const OtherCharacter = OtherPlayer.Character
+                for Idx, OtherPlayer in AllPlayers do
+                    const OtherCharacter = OtherPlayer.Character
 
-                if OtherCharacter then
-                    const PotentialSurvivorTag = OtherCharacter:FindFirstChild("SurvivalTag")
+                    if OtherCharacter then
+                        const PotentialSurvivorTag = OtherCharacter:FindFirstChild("SurvivalTag")
 
-                    if PotentialSurvivorTag then
-                        Script.StateValues.RecordedSurvivalTag = PotentialSurvivorTag
+                        if PotentialSurvivorTag then
+                            Script.StateValues.RecordedSurvivalTag = PotentialSurvivorTag
 
-                        Script.Library.VibeUI:Notification({
-                            Title = "Incoming Disaster",
-                            Description = `Disaster is {PotentialSurvivorTag.Value}`,
-                            Type = "warning",  -- info | success | warning | error
-                            Duration = 20,
-                        })
-                    else
-                        if Idx > (#AllPlayers) then
                             Script.Library.VibeUI:Notification({
-                                Title = "Error",
-                                Description = "Failed to find tag, You may not be in an active round",
-                                Type = "error",  -- info | success | warning | error
-                                Duration = 12,
+                                Title = "Incoming Disaster",
+                                Description = `Disaster is {PotentialSurvivorTag.Value}`,
+                                Type = "warning",  -- info | success | warning | error
+                                Duration = 20,
                             })
+                        else
+                            if Idx > (#AllPlayers) then
+                                Script.Library.VibeUI:Notification({
+                                    Title = "Error",
+                                    Description = "Failed to find tag, You may not be in an active round",
+                                    Type = "error",  -- info | success | warning | error
+                                    Duration = 12,
+                                })
+                            end
                         end
                     end
                 end
             end
         end
-    end
+    end, "__onNotifyDisaster")
 end
 
 const function OnTeleportToIsland()
-    if HumanoidRootPart and HumanoidRootPart.Parent ~= nil then
-        const IslandPosition = Script.Configuration.TeleportsConfiguration.IslandTeleportPosition
-        const WaterPartPosition = Script.Instances.WaterCollisionPart and Script.Instances.WaterCollisionPart.Position or Vector3.zero
+    ProtectCallback(function()
+        if HumanoidRootPart and HumanoidRootPart.Parent ~= nil then
+            const IslandPosition = Script.Configuration.TeleportsConfiguration.IslandTeleportPosition
+            const WaterPartPosition = Script.Instances.WaterCollisionPart and Script.Instances.WaterCollisionPart.Position or Vector3.zero
 
-        local NewPosition
+            local NewPosition
 
-        if WaterPartPosition.Y > IslandPosition.Y then
-            NewPosition = CFrame.new(
-                IslandPosition.X,
-                WaterPartPosition.Y + 5,
-                IslandPosition.Z
-            )
-        else
-            NewPosition = IslandPosition
+            if WaterPartPosition.Y > IslandPosition.Y then
+                NewPosition = CFrame.new(
+                    IslandPosition.X,
+                    WaterPartPosition.Y + 5,
+                    IslandPosition.Z
+                )
+            else
+                NewPosition = IslandPosition
+            end
+
+            HumanoidRootPart.CFrame = NewPosition
         end
-
-        HumanoidRootPart.CFrame = NewPosition
-    end
+    end, "__onTeleportToIsland")
 end
 
 const function OnTeleportToTower()
-    if HumanoidRootPart and HumanoidRootPart.Parent ~= nil then
-        HumanoidRootPart.CFrame = Script.Configuration.TeleportsConfiguration.TowerTeleportPosition
-    end
+    ProtectCallback(function()
+        if HumanoidRootPart and HumanoidRootPart.Parent ~= nil then
+            HumanoidRootPart.CFrame = Script.Configuration.TeleportsConfiguration.TowerTeleportPosition
+        end
+    end, "__onTeleportToTower")
 end
 
 const function OnLoadIY()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+    ProtectCallback(function()
+        return loadstring(
+            game:HttpGet(
+                "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"
+            )
+        )()
+    end, "__onLoadInfiniteYield")
 end
 
 --// Main Script Definitions \\--
 const function DetectUIExit()
-    local HiddenUI = gethui()
+    ProtectCallback(function()
+        local HiddenUI = typeof(gethui) == "function" and gethui() or CoreGui:FindFirstChild("RobloxGui")
 
-    for _, UIEntry in HiddenUI:GetChildren() do
-        if UIEntry:IsA("ScreenGui") and UIEntry:GetAttribute("VibeUIHolder") then
-            table.insert(
-                Script.ScriptData.ScriptPool,
-                UIEntry:GetPropertyChangedSignal("Parent"):Once(function()
-                    if Script.ScriptData.IsUnloading then return end
-                    if UIEntry.Parent ~= HiddenUI then
-                        UnloadScript()
-                    end
-                end)
-            )
+        for _, UIEntry in HiddenUI:GetChildren() do
+            if UIEntry:IsA("ScreenGui") and UIEntry:GetAttribute("VibeUIHolder") then
+                table.insert(
+                    Script.ScriptData.ScriptPool,
+                    UIEntry:GetPropertyChangedSignal("Parent"):Once(function()
+                        if Script.ScriptData.IsUnloading then return end
+                        if UIEntry.Parent ~= HiddenUI then
+                            UnloadScript()
+                        end
+                    end)
+                )
+            end
         end
-    end
+    end, "__detectUIExit")
 end
 
 const function LoadVisualUIConfig()
@@ -478,7 +509,15 @@ const function CreateScriptDependencies()
         )
     end
 
-    ProtectCallback(function()
+    ProtectCallback(function()``
+        if Script.ScriptData.Debug then
+            Output(
+                print,
+                "__createScriptDependencies",
+                "Creating Script Dependencies.."
+            )
+        end
+
         do
             local WaterCollisionPart = Instance.new("Part")
             WaterCollisionPart.Name = Script.ScriptData.ScriptGUID
@@ -704,7 +743,6 @@ const function CreateScriptDependencies()
             Type = (#Script.ScriptData.Errors == 0 and "success" or "error"),  -- info | success | warning | error
             Duration = 4,
         })
-        
     end, "__createScriptDependencies")
 end
 
@@ -720,11 +758,11 @@ end
 
 -- Handles character pointer evaulation
 const function OnUserCharacterAdded(NewCharacter : Model)
-    Character = NewCharacter
+    Character = CloneReference(NewCharacter)
     HumanoidRootPart = NewCharacter:WaitForChild("HumanoidRootPart", 2)
     Humanoid = NewCharacter:WaitForChild("Humanoid", 2)
 
-    if Script.Library.VibeUI.Flags.__anonymousMode and Script.StateValues.AnonymousReset then Script.StateValues.AnonymousReset = false OnTeleportToIsland() end
+    if Script.Library.VibeUI.Flags.__anonymousMode and Script.StateValues.AnonymousReset then Script.StateValues.AnonymousReset = false; OnTeleportToIsland() end
 end
 
 -- Handles looped script states
@@ -784,7 +822,7 @@ const function HeartbeatCompute()
             local IslandChildren = (Island and Island:GetChildren() or {})
 
             for _, Entry in IslandChildren do
-                if Entry:IsA("BasePart") then
+                if Entry:IsA("BasePart") and Entry.AssemblyLinearVelocity.Magnitude >= 2 then
                     Entry.AssemblyLinearVelocity = Vector3.zero                
                 end
             end
@@ -831,7 +869,19 @@ end
 
 --// (Main) Boot Process \\--
 ProtectCallback(function()
-    local GlobalEnvironment = getgenv()
+    local GlobalEnvironment = typeof(getgenv) == "function" and getgenv()
+
+    if not GlobalEnvironment then
+        Output(
+            print,
+            "__mainBootProcess",
+            `{Script.ScriptData.Executor} Doesnt appear to support getgenv, Exiting.`
+        )
+
+        UnloadScript()
+
+        return
+    end
 
     if typeof(GlobalEnvironment[Script.ScriptData.ScriptEnvironment]) == "table" then
         local ScriptEnvironment = GlobalEnvironment[Script.ScriptData.ScriptEnvironment]
@@ -885,7 +935,7 @@ ProtectCallback(function()
             Script.Library.LoadingBar:Finish(0.2)
             Script.Library.Tabs.Settings.TabContents.StartupInfoParagraph:SetText(
                 `Identified Executor as {
-                    identifyexecutor()
+                    Script.ScriptData.Executor
                 }. Loaded in Approximately {
                     Decimate(ElapsedTime, 1000)
                 } second(s)`
