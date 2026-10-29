@@ -651,12 +651,6 @@ const function CreateScriptDependencies()
                 RichText = false
             })
 
-            Script.Library.KeybindList = Script.Library.VibeUI:KeybindList({
-                Title = "Keybinds", 
-                ShowTitle = true, 
-                RichText = false
-            })
-
             Script.Library.Tabs.Settings.Tab = Script.Library.VibeUI:CreateSettingsPage(
                 Script.Library.Window,
                 Script.ScriptData.ScriptWatermark,
