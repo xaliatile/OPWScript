@@ -1,4 +1,4 @@
--- // This script will never be obfuscated by me \\--
+--// This script will never be obfuscated by me \\--
 const CloneReference = cloneref or clonereference
 local ExecutorID = typeof(identifyexecutor) == "function" and identifyexecutor
 
@@ -542,6 +542,8 @@ const function CreateScriptDependencies()
                                 Humanoid.MaxHealth = -1
                             end
                         end)
+                    elseif RoundState == "End Round" then
+                        Script.StateValues.RecordedSurvivalTag = nil
                     end
                 end)
             )
